@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component-set>
+    <components>
+        <component>
+            <role>org.apache.maven.project.ProjectBuilder</role>
+            <role-hint>imh</role-hint>
+            <implementation>org.apache.maven.project.DefaultProjectBuilder</implementation>
+            <description></description>
+            <isolated-realm>false</isolated-realm>
+            <instantiation-strategy>per-lookup</instantiation-strategy>
+            <isolated-realm>false</isolated-realm>
+        </component>
+    </components>
+</component-set>

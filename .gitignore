@@ -1,0 +1,31 @@
+#eclipse project files
+**/.project
+**/.classpath
+**/.settings
+**/.dmproject
+**/.dfsproject
+**/.checkstyle
+
+# maven files
+**/target
+**/overlays
+**/bin
+**/*.class
+**/.flattened-pom.xml
+**/*.releaseBackup
+
+#gradle files
+build/
+
+# idea project files
+*.iml
+*.ipr
+*.iws
+.idea
+/.gradle/
+**/out
+**/generated/**
+
+#SVN ariifacts
+.svn
+.tpignore
