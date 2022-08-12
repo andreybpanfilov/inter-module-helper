@@ -21,7 +21,6 @@
 package tel.panfilov.maven.extensions.imh;
 
 import org.apache.maven.RepositoryUtils;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
@@ -38,32 +37,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-@Component(role = IMHWorkspaceReader.class)
-public class IMHWorkspaceReader implements WorkspaceReader {
+@Component(role = IMHWorkspaceReader.class, hint = "imh")
+public class IMHWorkspaceReader extends AbstractProjectAware implements WorkspaceReader {
 
-    @Requirement
-    private ArtifactHandlerManager artifactHandlerManager;
+    private final WorkspaceRepository repository = new WorkspaceRepository();
 
     @Requirement
     private Logger logger;
 
-    private final WorkspaceRepository repository = new WorkspaceRepository();
-
     private long buildStartTime = -1L;
-
-    private final Map<String, MavenProject> projectMap = new HashMap<>();
-
-    public void addProject(MavenProject project) {
-        projectMap.put(getProjectId(project), project);
-    }
 
     public void setBuildStartTime(long buildStartTime) {
         this.buildStartTime = buildStartTime;
@@ -154,7 +142,7 @@ public class IMHWorkspaceReader implements WorkspaceReader {
 
             return true;
         } catch (IOException e) {
-            logger.warn("Failed to check whether the packaged artifact is up-to-date, assuming it is", e);
+            logger.warn("[IMH] Failed to check whether the packaged artifact is up-to-date, assuming it is", e);
             return true;
         }
     }
@@ -187,16 +175,5 @@ public class IMHWorkspaceReader implements WorkspaceReader {
                 || ("jar".equals(artifact.getExtension()) && "tests".equals(artifact.getClassifier()));
     }
 
-    protected String getProjectId(MavenProject project) {
-        return project.getGroupId() + ':' + project.getArtifactId() + ':' + project.getVersion();
-    }
-
-    protected String getProjectId(Artifact artifact) {
-        return artifact.getGroupId() + ':' + artifact.getArtifactId() + ':' + artifact.getVersion();
-    }
-
-    protected String getArtifactId(Artifact artifact) {
-        return artifact.getGroupId() + ':' + artifact.getArtifactId() + ':' + artifact.getExtension() + ':' + artifact.getClassifier();
-    }
 
 }
