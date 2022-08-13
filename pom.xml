@@ -3,7 +3,7 @@
 
     <groupId>tel.panfilov.maven</groupId>
     <artifactId>inter-module-extension</artifactId>
-    <version>0.1.7-SNAPSHOT</version>
+    <version>0.1.7</version>
     <packaging>jar</packaging>
 
 
@@ -29,7 +29,7 @@
         <connection>scm:git:git://github.com/andreybpanfilov/inter-module-helper.git</connection>
         <developerConnection>scm:git:git@github.com:andreybpanfilov/inter-module-helper.git</developerConnection>
         <url>https://github.com/andreybpanfilov/inter-module-helper</url>
-        <tag>HEAD</tag>
+        <tag>inter-module-extension-0.1.7</tag>
     </scm>
 
     <organization>
@@ -68,7 +68,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.version>3.3.9</maven.version>
         <maven.plugin.tools.version>3.6.4</maven.plugin.tools.version>
-        <project.build.outputTimestamp>2022-08-12T16:46:51Z</project.build.outputTimestamp>
+        <project.build.outputTimestamp>2022-08-13T21:44:49Z</project.build.outputTimestamp>
         <maven-javadoc-plugin.version>3.4.0</maven-javadoc-plugin.version>
         <maven-release-plugin.version>3.0.0-M6</maven-release-plugin.version>
         <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
