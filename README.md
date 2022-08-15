@@ -29,7 +29,7 @@ To take benefit of **inter-module helper maven extension** create in root of you
     <extension>
         <groupId>tel.panfilov.maven</groupId>
         <artifactId>inter-module-extension</artifactId>
-        <version>0.1.7</version>
+        <version>0.1.8</version>
     </extension>
 </extensions>
 ```

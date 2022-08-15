@@ -24,29 +24,18 @@ import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.building.ModelBuildingRequest;
-import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.ProjectBuilder;
 import org.apache.maven.project.ProjectBuildingException;
-import org.apache.maven.project.ProjectBuildingRequest;
-import org.apache.maven.project.ProjectBuildingResult;
-import org.codehaus.plexus.PlexusContainer;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.StringUtils;
-import org.eclipse.aether.DefaultRepositoryCache;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.LocalRepository;
-import org.eclipse.aether.resolution.ArtifactDescriptorPolicy;
 
 import java.io.File;
-import java.util.Collections;
-import java.util.List;
 
 @Component(role = AbstractMavenLifecycleParticipant.class)
 public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
@@ -56,9 +45,6 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
     public static final String WORKSPACE_ENABLED_FLAG = "imh.workspace";
 
     public static final String REPOSITORY_ENABLED_FLAG = "imh.repository";
-
-    @Requirement
-    private PlexusContainer container;
 
     @Requirement
     private Logger logger;
@@ -93,6 +79,11 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
             logger.info("[IMH] setting up overlay repository");
 
             MavenProject rootProject = getRootProject(mavenSession);
+            if (rootProject == null) {
+                logger.info("[IMH] failed to discover root project");
+                return;
+            }
+
             File overlayPath = getOverlayRepositoryPath(rootProject);
             if (overlayPath == null) {
                 logger.info("[IMH] empty overlay repository path");
@@ -140,8 +131,13 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
             }
 
             logger.debug("[IMH] setting up workspace");
-            workspaceReader.setRootProject(getRootProject(mavenSession));
+            MavenProject rootProject = getRootProject(mavenSession);
+            if (rootProject == null) {
+                logger.info("[IMH] failed to discover root project");
+                return;
+            }
 
+            workspaceReader.setRootProject(rootProject);
         } catch (ComponentLookupException | ProjectBuildingException ex) {
             logger.error("[IMH] Failed to setup workspace reader", ex);
         }
@@ -149,33 +145,7 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
 
     protected MavenProject getRootProject(MavenSession mavenSession) throws ProjectBuildingException, ComponentLookupException {
         if (rootProject == null) {
-            MavenExecutionRequest request = mavenSession.getRequest();
-            RepositorySystemSession repositorySystemSession = tempRepositorySession(mavenSession);
-            MavenProject project = getProject(request, repositorySystemSession);
-            project = rootProjectLocator.getRootProject(project, request.getMultiModuleProjectDirectory());
-            rootProject = populateRootProject(project, request, repositorySystemSession);
-        }
-        return rootProject;
-    }
-
-    protected MavenProject getProject(MavenExecutionRequest request, RepositorySystemSession repositorySystemSession) throws ProjectBuildingException, ComponentLookupException {
-        ProjectBuildingRequest buildingRequest = projectBuildingRequest(request, repositorySystemSession);
-        ProjectBuilder projectBuilder = container.lookup(ProjectBuilder.class, "imh");
-        return projectBuilder.build(request.getPom(), buildingRequest).getProject();
-    }
-
-    protected MavenProject populateRootProject(MavenProject rootProject, MavenExecutionRequest request, RepositorySystemSession repositorySystemSession) throws ProjectBuildingException, ComponentLookupException {
-        List<File> poms = Collections.singletonList(rootProject.getFile());
-        ProjectBuildingRequest buildingRequest = projectBuildingRequest(request, repositorySystemSession);
-        ProjectBuilder projectBuilder = container.lookup(ProjectBuilder.class, "imh");
-        for (ProjectBuildingResult result : projectBuilder.build(poms, true, buildingRequest)) {
-            MavenProject project = result.getProject();
-            if (project == null) {
-                continue;
-            }
-            if (rootProject.getFile().equals(project.getFile())) {
-                return project;
-            }
+            rootProject = rootProjectLocator.getRootProject(mavenSession);
         }
         return rootProject;
     }
@@ -189,23 +159,5 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
         return "true".equals(session.getUserProperties().get(REPOSITORY_ENABLED_FLAG));
     }
 
-    private ProjectBuildingRequest projectBuildingRequest(MavenExecutionRequest request, RepositorySystemSession systemSession) {
-        ProjectBuildingRequest buildingRequest = request.getProjectBuildingRequest();
-        buildingRequest = new DefaultProjectBuildingRequest(buildingRequest);
-        buildingRequest.setRepositorySession(systemSession);
-        buildingRequest.setResolveDependencies(false);
-        buildingRequest.setProcessPlugins(true);
-        buildingRequest.setResolveVersionRanges(false);
-        buildingRequest.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
-        return buildingRequest;
-    }
-
-    protected RepositorySystemSession tempRepositorySession(MavenSession session) {
-        DefaultRepositorySystemSession result = new DefaultRepositorySystemSession(session.getRepositorySession());
-        result.setWorkspaceReader(null);
-        result.setArtifactDescriptorPolicy((s, r) -> ArtifactDescriptorPolicy.IGNORE_ERRORS);
-        result.setCache(new DefaultRepositoryCache());
-        return result;
-    }
 
 }
