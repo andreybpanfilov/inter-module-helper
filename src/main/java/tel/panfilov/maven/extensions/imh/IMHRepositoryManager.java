@@ -14,6 +14,7 @@ import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.LocalRepositoryManager;
 import org.eclipse.aether.repository.RemoteRepository;
 
+import java.io.File;
 import java.nio.file.Path;
 
 @Component(role = IMHRepositoryManager.class, hint = "imh")
@@ -36,6 +37,16 @@ public class IMHRepositoryManager extends AbstractProjectAware implements LocalR
 
     protected String relativize(String path) {
         return localDir.relativize(overlayDir.resolve(path)).toString();
+    }
+
+    public File getLocalArtifact(Artifact artifact) {
+        if (isReactorArtifact(artifact)) {
+            String localPart = overlay.getPathForLocalArtifact(artifact);
+            if (localPart != null) {
+                return overlayDir.resolve(localPart).toFile();
+            }
+        }
+        return null;
     }
 
     @Override

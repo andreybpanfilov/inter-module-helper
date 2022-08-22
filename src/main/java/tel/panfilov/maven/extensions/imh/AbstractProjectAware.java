@@ -16,10 +16,12 @@ public abstract class AbstractProjectAware {
         projectMap.put(getProjectId(project), project);
         List<MavenProject> collected = project.getCollectedProjects();
         if (collected != null) {
-            for (MavenProject child : collected) {
-                projectMap.put(getProjectId(child), child);
-            }
+            collected.forEach(this::addProject);
         }
+    }
+
+    public void addProject(MavenProject project) {
+        projectMap.put(getProjectId(project), project);
     }
 
     protected boolean isReactorArtifact(Artifact artifact) {

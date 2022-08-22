@@ -103,8 +103,12 @@ public class IMHWorkspaceReader extends AbstractProjectAware implements Workspac
         return null;
     }
 
+    protected boolean isArtifactFile(File file) {
+        return file != null && file.exists() && file.isFile();
+    }
+
     protected boolean isActual(File packaged, Artifact artifact, MavenProject project) {
-        if (!packaged.exists() || !packaged.isFile()) {
+        if (!isArtifactFile(packaged)) {
             return false;
         }
 

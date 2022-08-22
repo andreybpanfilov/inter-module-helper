@@ -67,6 +67,32 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
     public void afterSessionStart(MavenSession session) throws MavenExecutionException {
         setupWorkspaceReader(session);
         setupLocalRepositoryManager(session);
+        setupLocalRepository(session);
+    }
+
+    public void afterProjectsRead(MavenSession session) throws MavenExecutionException {
+        for (MavenProject project : session.getProjects()) {
+            if (isWorkspaceEnabled(session)) {
+                workspaceReader.addProject(project);
+            }
+            if (isRepositoryEnabled(session)) {
+                repositoryManager.addProject(project);
+            }
+        }
+    }
+
+    protected void setupLocalRepository(MavenSession mavenSession) {
+        if (isWorkspaceEnabled(mavenSession) || isRepositoryEnabled(mavenSession)) {
+            MavenExecutionRequest request = mavenSession.getRequest();
+            IMHArtifactRepository localRepository = new IMHArtifactRepository(request.getLocalRepository());
+            if (isWorkspaceEnabled(mavenSession)) {
+                localRepository.setWorkspaceReader(workspaceReader);
+            }
+            if (isRepositoryEnabled(mavenSession)) {
+                localRepository.setRepositoryManager(repositoryManager);
+            }
+            request.setLocalRepository(localRepository);
+        }
     }
 
     protected void setupLocalRepositoryManager(MavenSession mavenSession) {
