@@ -119,7 +119,10 @@ public class RootProjectLocator {
     }
 
     protected File getRootPom(ModelBuildingResult result, File rootDirectory) {
-        Predicate<File> rootFolder = dir -> dir.equals(rootDirectory) || new File(dir, ".mvn").isDirectory();
+        Predicate<File> isRoot = dir -> dir.equals(rootDirectory);
+        Predicate<File> hasMvnFolder = dir -> new File(dir, ".mvn").isDirectory();
+        Predicate<File> hasPom = dir -> new File(dir, "pom.xml").isFile();
+        Predicate<File> rootFolder = isRoot.or(hasMvnFolder);
         File rootPom = null;
         for (String modelId : result.getModelIds()) {
             Model model = result.getRawModel(modelId);
@@ -130,6 +133,11 @@ public class RootProjectLocator {
             if (rootFolder.test(pom.getParentFile())) {
                 rootPom = pom;
                 break;
+            }
+        }
+        if (rootPom == null) {
+            if (hasPom.and(hasMvnFolder).test(rootDirectory)) {
+                rootPom = new File(rootDirectory, "pom.xml");
             }
         }
         return rootPom;
