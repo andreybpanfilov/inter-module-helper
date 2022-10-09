@@ -26,7 +26,6 @@ import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
-import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
@@ -38,8 +37,6 @@ import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.util.repository.ChainedWorkspaceReader;
 
 import java.io.File;
-import java.util.Date;
-import java.util.Optional;
 
 @Component(role = AbstractMavenLifecycleParticipant.class)
 public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
@@ -179,11 +176,7 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
         // that would be better to use EventSpy#onEvent instead,
         // however IntelliJ triggers afterSessionStart event only
 
-        Optional.of(request)
-                .map(MavenExecutionRequest::getProjectBuildingRequest)
-                .map(ProjectBuildingRequest::getBuildStartTime)
-                .map(Date::getTime)
-                .ifPresent(workspaceReader::setBuildStartTime);
+        workspaceReader.setMavenExecutionRequest(request);
 
         DefaultRepositorySystemSession repositorySystemSession = (DefaultRepositorySystemSession) mavenSession.getRepositorySession();
         repositorySystemSession.setWorkspaceReader(ChainedWorkspaceReader.newInstance(
@@ -200,12 +193,12 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
     }
 
     protected boolean isWorkspaceEnabled(MavenSession session) {
-        return "true".equals(session.getUserProperties().get(WORKSPACE_ENABLED_LEGACY_FLAG))
-                || "true".equals(session.getUserProperties().get(WORKSPACE_ENABLED_FLAG));
+        return "true".equalsIgnoreCase(session.getUserProperties().getProperty(WORKSPACE_ENABLED_LEGACY_FLAG))
+                || "true".equalsIgnoreCase(session.getUserProperties().getProperty(WORKSPACE_ENABLED_FLAG));
     }
 
     protected boolean isRepositoryEnabled(MavenSession session) {
-        return "true".equals(session.getUserProperties().get(REPOSITORY_ENABLED_FLAG));
+        return "true".equalsIgnoreCase(session.getUserProperties().getProperty(REPOSITORY_ENABLED_FLAG));
     }
 
 

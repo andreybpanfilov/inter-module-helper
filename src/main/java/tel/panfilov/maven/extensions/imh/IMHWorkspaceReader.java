@@ -21,8 +21,10 @@
 package tel.panfilov.maven.extensions.imh;
 
 import org.apache.maven.RepositoryUtils;
+import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
@@ -37,24 +39,28 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.stream.Stream;
 
 @Component(role = IMHWorkspaceReader.class, hint = "imh")
 public class IMHWorkspaceReader extends AbstractProjectAware implements WorkspaceReader {
+
+    public static final String DIRECTORY_FALLBACK_ENABLED_FLAG = "imh.directoryfallback";
 
     private final WorkspaceRepository repository = new WorkspaceRepository();
 
     @Requirement
     private Logger logger;
 
-    private long buildStartTime = -1L;
+    private MavenExecutionRequest mavenExecutionRequest;
 
-    public void setBuildStartTime(long buildStartTime) {
-        this.buildStartTime = buildStartTime;
+    public void setMavenExecutionRequest(MavenExecutionRequest mavenExecutionRequest) {
+        this.mavenExecutionRequest = mavenExecutionRequest;
     }
 
     @Override
@@ -100,6 +106,18 @@ public class IMHWorkspaceReader extends AbstractProjectAware implements Workspac
         if (isActual(file, artifact, project)) {
             return file;
         }
+
+        if (isDirectoryFallbackEnabled(project)) {
+            Path directory;
+            if (isTestArtifact(artifact)) {
+                directory = Paths.get(build.getTestOutputDirectory());
+            } else {
+                directory = Paths.get(build.getOutputDirectory());
+            }
+
+            return directory.toFile();
+        }
+
         return null;
     }
 
@@ -123,6 +141,12 @@ public class IMHWorkspaceReader extends AbstractProjectAware implements Workspac
         if (Files.notExists(directory) || !Files.isDirectory(directory)) {
             return true;
         }
+
+        long buildStartTime = Optional.ofNullable(mavenExecutionRequest)
+                .map(MavenExecutionRequest::getProjectBuildingRequest)
+                .map(ProjectBuildingRequest::getBuildStartTime)
+                .map(Date::getTime)
+                .orElse(-1L);
 
         try (Stream<Path> outputFiles = Files.walk(directory)) {
             long artifactTime = Files.getLastModifiedTime(packaged.toPath()).toMillis();
@@ -178,6 +202,20 @@ public class IMHWorkspaceReader extends AbstractProjectAware implements Workspac
     protected boolean isTestArtifact(Artifact artifact) {
         return ("test-jar".equals(artifact.getProperty("type", "")))
                 || ("jar".equals(artifact.getExtension()) && "tests".equals(artifact.getClassifier()));
+    }
+
+    protected boolean isDirectoryFallbackEnabled(MavenProject project) {
+        Properties properties = project.getProperties();
+        if ("true".equalsIgnoreCase(properties.getProperty(DIRECTORY_FALLBACK_ENABLED_FLAG))) {
+            return true;
+        }
+
+        if (mavenExecutionRequest == null) {
+            return false;
+        }
+
+        properties = mavenExecutionRequest.getUserProperties();
+        return "true".equalsIgnoreCase(properties.getProperty(DIRECTORY_FALLBACK_ENABLED_FLAG));
     }
 
 

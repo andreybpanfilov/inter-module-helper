@@ -28,6 +28,10 @@ public abstract class AbstractProjectAware {
         return projectMap.containsKey(getProjectId(artifact));
     }
 
+    public MavenProject getProject(Artifact artifact) {
+        return projectMap.get(getProjectId(artifact));
+    }
+
     protected boolean isReactorArtifact(Metadata metadata) {
         return projectMap.containsKey(getProjectId(metadata));
     }

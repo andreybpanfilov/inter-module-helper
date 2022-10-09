@@ -50,23 +50,23 @@ public class IMHPlaceholderResolver {
 
     @Requirement
     protected ArtifactHandlerManager artifactHandlerManager;
-
-    @Requirement
-    private RepositorySystem repositorySystem;
-
     @Requirement
     protected IMHWorkspaceReader workspaceReader;
-
+    @Requirement
+    private RepositorySystem repositorySystem;
     @Requirement
     private Logger logger;
 
     public void resolvePlaceholders(ProjectBuildingRequest request, ProjectBuildingResult result) throws ProjectBuildingException {
-        if (!isPlaceholderResolutionEnabled(request, result)) {
+        resolveConfigurationPlaceholders(request, result.getProject());
+    }
+
+    public void resolveConfigurationPlaceholders(ProjectBuildingRequest request, MavenProject project) throws ProjectBuildingException {
+        if (project == null) {
             return;
         }
 
-        MavenProject project = result.getProject();
-        if (project == null) {
+        if (!isPlaceholderResolutionEnabled(request, project)) {
             return;
         }
 
@@ -108,6 +108,13 @@ public class IMHPlaceholderResolver {
     }
 
     protected String resolveDependencies(ProjectBuildingRequest request, MavenProject project, String dependency) throws ProjectBuildingException {
+        if (dependency == null || dependency.isEmpty()) {
+            throw new PlaceholderResolutionException(
+                    project.getId(),
+                    "Empty dependency specified"
+            );
+        }
+
         char separator = dependency.charAt(dependency.length() - 1);
         boolean transitive = isPathSeparator(separator);
         if (transitive) {
@@ -149,30 +156,27 @@ public class IMHPlaceholderResolver {
         return ',' == separator || ';' == separator || ':' == separator;
     }
 
-    protected boolean isPlaceholderResolutionEnabled(ProjectBuildingRequest request, ProjectBuildingResult result) {
+    protected boolean isPlaceholderResolutionEnabled(ProjectBuildingRequest request, MavenProject project) {
         Properties properties = request.getUserProperties();
-        if ("true".equals(properties.get(PLACEHOLDER_RESOLUTION_ENABLED_FLAG))) {
+        if ("true".equalsIgnoreCase(properties.getProperty(PLACEHOLDER_RESOLUTION_ENABLED_FLAG))) {
             return true;
         }
 
-        MavenProject project = result.getProject();
         if (project == null) {
             return false;
         }
 
         properties = project.getProperties();
-        return "true".equals(properties.get(PLACEHOLDER_RESOLUTION_ENABLED_FLAG));
+        return "true".equalsIgnoreCase(properties.getProperty(PLACEHOLDER_RESOLUTION_ENABLED_FLAG));
     }
 
     protected Artifact toArtifact(MavenProject project, String dependency) throws ProjectBuildingException {
-        // groupId:artifactId[:version[:packaging[:classifier]]]
         boolean hasVersion = false;
         String[] tokens = StringUtils.split(dependency, ":");
         if (tokens.length < 2) {
             throw new PlaceholderResolutionException(
                     project.getId(),
-                    "Invalid dependency specified: " + dependency,
-                    null
+                    "Invalid dependency specified: " + dependency + ", expecting format groupId:artifactId[:version[:packaging[:classifier]]]"
             );
         }
         String groupId = tokens[0];
@@ -199,17 +203,8 @@ public class IMHPlaceholderResolver {
                     .map(RepositoryUtils::toArtifact)
                     .orElseThrow(() -> new PlaceholderResolutionException(
                             project.getId(),
-                            "No version was specified for artifact " + dependency,
-                            null
+                            "No version was specified for artifact " + dependency
                     ));
-        }
-
-        if (workspaceReader.isReactorArtifact(artifact)) {
-            throw new PlaceholderResolutionException(
-                    project.getId(),
-                    "Artifact " + dependency + " is reactor artifact, IMH extension does not support such configurations",
-                    null
-            );
         }
 
         return artifact;
@@ -236,9 +231,8 @@ public class IMHPlaceholderResolver {
 
     static class CollectAllDependenciesVisitor implements DependencyVisitor {
 
-        private boolean root = true;
-
         private final Set<Artifact> artifacts = new HashSet<>();
+        private boolean root = true;
 
         @Override
         public boolean visitEnter(DependencyNode node) {
@@ -260,6 +254,10 @@ public class IMHPlaceholderResolver {
     }
 
     static class PlaceholderResolutionException extends ProjectBuildingException {
+
+        public PlaceholderResolutionException(String projectId, String message) {
+            this(projectId, message, null);
+        }
 
         public PlaceholderResolutionException(String projectId, String message, Throwable cause) {
             super(projectId, message, cause);
