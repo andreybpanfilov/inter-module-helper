@@ -140,6 +140,7 @@ public class IMHWorkspaceReader extends AbstractProjectAware implements Workspac
 
                 long outputFileLastModified = Files.getLastModifiedTime(outputFile).toMillis();
                 if (outputFileLastModified > artifactTime) {
+                    logger.debug("[IMH] File '" + packaged + "' seems to be stale, found newer file in build directory: " + outputFile);
                     return false;
                 }
             }

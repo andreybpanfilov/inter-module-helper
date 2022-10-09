@@ -24,7 +24,7 @@ public abstract class AbstractProjectAware {
         projectMap.put(getProjectId(project), project);
     }
 
-    protected boolean isReactorArtifact(Artifact artifact) {
+    public boolean isReactorArtifact(Artifact artifact) {
         return projectMap.containsKey(getProjectId(artifact));
     }
 

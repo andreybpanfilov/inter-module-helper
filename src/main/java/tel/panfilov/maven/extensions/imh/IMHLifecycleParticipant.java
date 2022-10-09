@@ -26,6 +26,7 @@ import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingException;
+import org.apache.maven.project.ProjectBuildingRequest;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.component.repository.exception.ComponentLookupException;
@@ -34,8 +35,11 @@ import org.codehaus.plexus.util.StringUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.repository.LocalRepository;
+import org.eclipse.aether.util.repository.ChainedWorkspaceReader;
 
 import java.io.File;
+import java.util.Date;
+import java.util.Optional;
 
 @Component(role = AbstractMavenLifecycleParticipant.class)
 public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
@@ -145,14 +149,16 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
 
     protected void setupWorkspaceReader(MavenSession mavenSession) {
         try {
-            if (!isWorkspaceEnabled(mavenSession)) {
-                logger.info("[IMH] workspace extension disabled");
+            MavenExecutionRequest request = mavenSession.getRequest();
+            if (request.getPom() == null || !request.getPom().isFile()) {
+                logger.warn("[IMH] Pom file not found");
                 return;
             }
 
-            MavenExecutionRequest request = mavenSession.getRequest();
-            if (request.getPom() == null || !request.getPom().isFile()) {
-                logger.info("[IMH] Pom file not found");
+            injectWorkspaceReader(mavenSession, request);
+
+            if (!isWorkspaceEnabled(mavenSession)) {
+                logger.info("[IMH] workspace extension disabled");
                 return;
             }
 
@@ -167,6 +173,23 @@ public class IMHLifecycleParticipant extends AbstractMavenLifecycleParticipant {
         } catch (ComponentLookupException | ProjectBuildingException ex) {
             logger.error("[IMH] Failed to setup workspace reader", ex);
         }
+    }
+
+    protected void injectWorkspaceReader(MavenSession mavenSession, MavenExecutionRequest request) {
+        // that would be better to use EventSpy#onEvent instead,
+        // however IntelliJ triggers afterSessionStart event only
+
+        Optional.of(request)
+                .map(MavenExecutionRequest::getProjectBuildingRequest)
+                .map(ProjectBuildingRequest::getBuildStartTime)
+                .map(Date::getTime)
+                .ifPresent(workspaceReader::setBuildStartTime);
+
+        DefaultRepositorySystemSession repositorySystemSession = (DefaultRepositorySystemSession) mavenSession.getRepositorySession();
+        repositorySystemSession.setWorkspaceReader(ChainedWorkspaceReader.newInstance(
+                workspaceReader,
+                repositorySystemSession.getWorkspaceReader()
+        ));
     }
 
     protected MavenProject getRootProject(MavenSession mavenSession) throws ProjectBuildingException, ComponentLookupException {
